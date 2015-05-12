@@ -1,0 +1,86 @@
+<html>
+    <head>
+        <script src="jquery-1.11.3.js"></script>
+    </head>
+    <body id="body">
+        <table border="1">
+            <tr>
+                <td colspan="2"><div id="c1">1</div></td>
+            </tr>
+            <tr>
+                <td colspan="2"><div id="c2">2</div></td>
+            </tr>
+            <tr>
+                <td><div id="c3">3</div></td>
+                <td><div id="c4">4</div></td>
+            </tr>
+        </table>
+    </body>
+    <script type="application/javascript">
+        $(document).ready(function(){
+            var urls = [
+                ["Pure", "http://localhost:9998/status"]
+                , ["Main Repeater", "http://localhost:8881/status"]
+                , ["Even Repeater", "http://localhost:8882/status"]
+                , ["Odd Repeater", "http://localhost:8883/status"]];
+
+            // Check to see if we are allowed to call other domains
+            var cont = true;
+            $.ajax({
+                url: "http://localhost:8881/status",
+                dataType: "json",
+                async: false,
+                success: function( response ) {
+                    // yeah
+                },
+                error: function(code) {
+                    $("#body").html('Unable to call other domains, perhaps <a href="https://chrome.google.com/webstore/detail/allow-control-allow-origi/nlfbmbojpeacfghkpbjhddihlkkiljbi">CORS</a> is not activated?')
+                    cont = false;
+                }
+            });
+            if(!cont)
+                return;
+
+            function formatStatus(title, json, seenIds) {
+                var str ="";
+                str += "<b>" + title + "</b><br />";
+                str += "Total count: " + json["count"] + "<br />";
+                if(json["filter"]) {
+                    str += "Filter: " + json["filter"] + "<br />";
+                }
+                var awards = json["lastEntries"];
+                for(var i=0; i<awards.length; i++) {
+                    var award = awards[i];
+                    var id = award["Funds Request"]["Reference ID"];
+                    var newAward = seenIds.indexOf(id) == -1;
+                    str += "<p ";
+                    if(newAward) {
+                        str += "style=\"background-color:green\"";
+                        seenIds.push(id)
+                    }
+                    str += ">" + i + ". " + award["Project"]["Title"] + " (" + award["Funding Award"]["Amount"] + ")</p>";
+                }
+                return str;
+            }
+
+            function update(title, url, element, seenIds) {
+                $.ajax({
+                    url: url,
+                    success: function (json) {
+                        $(element).html(formatStatus(title, json, seenIds));
+                    },
+                    error: function (xhr, status, errorThrown) {
+                        $(element).html("Status: " + status + "! <br/>Perhaps nothing is listening on " + url);
+                    },
+                    complete: function () {
+                        setTimeout(function() { update(title, url, element, seenIds); }, 500);
+                    }
+                })
+            }
+
+            for(var i=0; i<urls.length; i++) {
+                update(urls[i][0], urls[i][1], "#c" + (i+1), [])
+            }
+        });
+    </script>
+</html>
