@@ -88,16 +88,17 @@
     </body>
     <script type="application/javascript">
         $(document).ready(function(){
+	    var host = "localhost"
             var urls = [
-                ["Pure", "http://localhost:9998/status"]
-                , ["Main Repeater", "http://localhost:8881/status"]
-                , ["Even Repeater", "http://localhost:8882/status"]
-                , ["Odd Repeater", "http://localhost:8883/status"]];
+                ["Pure", "http://" + host + ":9998/"]
+                , ["Main Repeater", "http://" + host + ":8881/"]
+                , ["Even Repeater", "http://" + host + ":8882/"]
+                , ["Odd Repeater", "http://" + host + ":8883/"]];
 
             // Check to see if we are allowed to call other domains
             var cont = true;
             $.ajax({
-                url: "http://10.10.70.29:8881/status",
+                url: urls[0][1] + 'status',
                 dataType: "json",
                 async: false,
                 success: function( response ) {
@@ -111,13 +112,13 @@
             if(!cont)
                 return;
 
-            function formatStatus(title, json, seenIds) {
+            function formatStatus(title, json, seenIds, url) {
                 var str ="";
                 str += "<h2>" + title + "</h2>";
                 if(json["filter"]) {
                     str += "<div class=\"filter\">Filter: " + json["filter"] + "</div>";
                 }
-                str += "<div class=\"count\">Total count: " + json["count"] + "</div>";
+                str += "<div class=\"count\">Total count: " + json["count"] + " <a href=\"" + url + "status\">S</a> <a href=\"" + url + "fundingResults\">D</a></div>";
                 var awards = json["lastEntries"];
                 for(var i=0; i<awards.length; i++) {
                     var award = awards[i];
@@ -128,16 +129,21 @@
                         str += "data-new";
                         seenIds.push(id)
                     }
-                    str += ">" + i + ". " + award["Project"]["Title"] + " (" + award["Funding Award"]["Amount"] + ")</p>";
+                    var amount = parseFloat(award["Funding Award"]["Amount"].split(' ')[0]);
+                    var amountStr = amount.toFixed(2).replace(/./g, function(c, i, a) {
+                        return i && c !== "." && ((a.length - i) % 3 === 0) ? ',' + c : c;
+                    });
+
+                    str += ">" + i + ". " + award["Project"]["Title"] + " - $" + amountStr + "</p>";
                 }
                 return str;
             }
 
             function update(title, url, element, seenIds) {
                 $.ajax({
-                    url: url,
+                    url: url+'status',
                     success: function (json) {
-                        $(element).html(formatStatus(title, json, seenIds));
+                        $(element).html(formatStatus(title, json, seenIds, url));
                         setTimeout(function() {
                             $('p[data-new]').addClass('flash');
                         }, 1);
